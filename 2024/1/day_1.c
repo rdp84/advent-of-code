@@ -34,6 +34,8 @@ int main(void)
   free(left);
   free(*right);
   free(right);
+
+  return EXIT_SUCCESS;
 }
 
 int read_locations(int **left, int **right)
