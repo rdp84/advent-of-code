@@ -34,7 +34,7 @@ char **alloc_wordsearch(int *rows, int *cols)
   (*rows)++;
   line = NULL;
 
-  while((linelen = getline(&line, &linecap, ifp)) > 0) {
+  while ((linelen = getline(&line, &linecap, ifp)) > 0) {
     retValue = realloc(retValue, (*rows + 1) * sizeof(char *));
     *(retValue + *rows) = line;
     (*rows)++;
