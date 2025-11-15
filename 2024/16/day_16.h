@@ -11,11 +11,6 @@
 #define WALL  '#'
 #define FREE  '.'
 
-#define can_move_north(map, i, j) *(*(map + (i - 1)) + j) != WALL
-#define can_move_east(map, i, j)  *(*(map + i) + (j + 1)) != WALL
-#define can_move_south(map, i, j) *(*(map + (i + 1)) + j) != WALL
-#define can_move_west(map, i, j)  *(*(map + i) + (j - 1)) != WALL
-
 struct location {
   int row;
   int col;
@@ -59,7 +54,7 @@ void free_location(location *);
 queue *alloc_queue(void);
 void  free_queue(queue *);
 void  print_queue(const queue *);
-void  enqueue(int, int, int, int, int, queue *);
+void  enqueue(path, queue *);
 path  dequeue(queue *);
 bool  empty(const queue *);
 

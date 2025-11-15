@@ -35,9 +35,14 @@ void part_1(void)
   printf("Start at (%d, %d)\n", --i, j);
 
   q = alloc_queue();
-  enqueue(0, i, j, 0, 1, q);
-  print_queue(q);
   visited = alloc_location(i, j, 0, 1);
+
+  p.score = 0;
+  p.row = i;
+  p.col = j;
+  p.rowDir = 0;
+  p.colDir = 1;
+  enqueue(p, q);
 
   while (!empty(q)) {
     p = dequeue(q);
@@ -66,8 +71,12 @@ void move(path p, char **map, queue *q, location *l)
 
   if (*(*(map + newRow) + newCol) != WALL &&
       !is_looping(l, newRow, newCol, p.rowDir, p.colDir)) {
-    enqueue(p.score + 1,  newRow, newCol, p.rowDir, p.colDir, q);
-    add_location(l, newRow, newCol, p.rowDir, p.colDir);
+    p.score++;
+    p.row = newRow;
+    p.col = newCol;
+
+    enqueue(p, q);
+    add_location(l, p.row, p.col, p.rowDir, p.colDir);
   }
 }
 
@@ -79,7 +88,11 @@ void rotate(int rowSign, int colSign, path p, char **map, queue *q, location *l)
   newColDir = colSign * p.rowDir;
 
   if (!is_looping(l, p.row, p.col, newRowDir, newColDir)) {
-    enqueue(p.score + 1000, p.row, p.col, newRowDir, newColDir, q);
+    p.score += 1000;
+    p.rowDir = newRowDir;
+    p.colDir = newColDir;
+
+    enqueue(p, q);
     add_location(l, p.row, p.col, newRowDir, newColDir);
   }
 }
@@ -144,17 +157,11 @@ queue *alloc_queue(void)
   return retValue;
 }
 
-void enqueue(int s, int r, int c, int rDir, int cDir, queue *q)
+void enqueue(path p, queue *q)
 {
   elem *e, *i, *j;
-  path p;
 
   e = malloc(sizeof(elem));
-  p.score = s;
-  p.row = r;
-  p.col = c;
-  p.rowDir = rDir;
-  p.colDir = cDir;
   e->p = p;
   e->next = NULL;
 
