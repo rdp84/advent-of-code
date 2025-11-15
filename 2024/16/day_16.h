@@ -46,16 +46,19 @@ char **alloc_map(int *, int *);
 void free_map(char **, int);
 void print_map(char **, int, int);
 
-location *alloc_location(int, int, int, int, int);
+location *alloc_location(int, int, int, int);
 void add_location(location *, int, int, int, int);
 bool is_looping(location *, int, int, int, int);
 void free_location(location *);
 
 queue *alloc_queue(void);
 void  free_queue(queue *);
+void  print_queue(const queue *);
 void  enqueue(int, int, int, int, int, queue *);
-data  dequeue(queue *);
-data  front(const queue *);
+elem  dequeue(queue *);
 bool  empty(const queue *);
+
+void  move(elem, char **, queue *, location *);
+void  rotate(int, int, elem, char **, queue *, location *);
 
 #endif

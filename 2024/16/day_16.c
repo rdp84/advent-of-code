@@ -11,29 +11,77 @@ int main(void)
 void part_1(void)
 {
   char **map;
-  int i, j, foundStart, rows, cols, min;
-  visited_locations *north, *east, *south;
-  queue q;
+  int i, j, rows, cols;
+  bool foundStart;
+  queue *q;
+  location *visited;
+  elem e;
 
   rows = cols = 0;
   map = alloc_map(&rows, &cols);
   print_map(map, rows, cols);
 
-  foundStart = 1;
-  for (i = 0; i < rows && foundStart; i++) {
+  foundStart = false;
+  for (i = 0; i < rows && !foundStart; i++) {
     for (j = 0; j < cols; j++) {
       if (*(*(map + i) + j) == START) {
         printf("Found start at (%d, %d)\n", i, j);
-        foundStart = 0;
+        foundStart = true;
         break;
       }
     }
   }
 
   printf("Start at (%d, %d)\n", --i, j);
-  initialize(&q);
 
+  q = alloc_queue();
+  enqueue(0, i, j, 0, 1, q);
+  print_queue(q);
+  visited = alloc_location(i, j, 0, 1);
+
+  while (!empty(q)) {
+    e = dequeue(q);
+
+    if (*(*(map + e.row) + e.col) != END) {
+      move(e, map, q, visited);
+      rotate(1, -1, e, map, q, visited); // clockwise
+      rotate(-1, 1, e, map, q, visited); // counter-clockwise
+    } else
+      break;
+  }
+
+  /* print_queue(q); */
+  printf("Found the end with a score of %d\n", e.score);
   free_map(map, rows);
+  free_queue(q);
+  free_location(visited);
+}
+
+void move(elem e, char **map, queue *q, location *l)
+{
+  int newRow, newCol;
+
+  newRow = e.row + e.rowDir;
+  newCol = e.col + e.colDir;
+
+  if (*(*(map + newRow) + newCol) != WALL &&
+      !is_looping(l, newRow, newCol, e.rowDir, e.colDir)) {
+    enqueue(e.score + 1,  newRow, newCol, e.rowDir, e.colDir, q);
+    add_location(l, newRow, newCol, e.rowDir, e.colDir);
+  }
+}
+
+void rotate(int rowSign, int colSign, elem e, char **map, queue *q, location *l)
+{
+  int newRowDir, newColDir;
+
+  newRowDir = rowSign * e.colDir;
+  newColDir = colSign * e.rowDir;
+
+  if (!is_looping(l, e.row, e.col, newRowDir, newColDir)) {
+    enqueue(e.score + 1000, e.row, e.col, newRowDir, newColDir, q);
+    add_location(l, e.row, e.col, newRowDir, newColDir);
+  }
 }
 
 char **alloc_map(int *rows, int *cols)
@@ -45,7 +93,7 @@ char **alloc_map(int *rows, int *cols)
 
   line = NULL;
   linecap = 0;
-  ifp = fopen("input.txt", "r");
+  ifp = fopen("example_input.txt", "r");
   *rows = *cols = 0;
 
   retValue = malloc(sizeof(char *));
@@ -85,13 +133,15 @@ void print_map(char **input, int rows, int cols)
   }
 }
 
-queue *alloc_queue()
+queue *alloc_queue(void)
 {
   queue *retValue;
 
   retValue = malloc(sizeof(queue));
   retValue->cnt = 0;
   retValue->front = retValue->rear = NULL;
+
+  return retValue;
 }
 
 void enqueue(int s, int r, int c, int rDir, int cDir, queue *q)
@@ -132,28 +182,55 @@ void enqueue(int s, int r, int c, int rDir, int cDir, queue *q)
   q->cnt++;
 }
 
-bool empty(queue *q)
+elem dequeue(queue *q)
+{
+  elem retValue, *toFree;
+
+  toFree = q->front;
+  q->front = q->front->next;
+  q->cnt--;
+
+  retValue.score = toFree->score;
+  retValue.row = toFree->row;
+  retValue.col = toFree->col;
+  retValue.rowDir  = toFree->rowDir;
+  retValue.colDir = toFree->colDir;
+  retValue.next = NULL;
+
+  free(toFree);
+  return retValue;
+}
+
+bool empty(const queue *q)
 {
   return q->cnt == 0;
 }
 
-int pop_path(paths *paths)
+void free_queue(queue *q)
 {
-  int score;
-  path *toFree;
+  elem *toFree;
 
-  score = paths->top->score;
-  toFree = paths->top;
-  paths->cnt--; 
-  paths->top = paths->top->next;
-  free(toFree);
+  while (q->front != NULL) {
+    toFree = q->front;
+    q->front = q->front->next;
+    free(toFree);
+  }
 
-  return score;
+  free(q);
 }
 
-int peek_path(paths *paths)
+void print_queue(const queue *q)
 {
-  return paths->top->score;
+  elem *e;
+
+  printf("queue has %d elem\n", q->cnt);
+
+  e = q->front;
+  while (e != NULL) {
+    printf("elem at (%d, %d), with score %d, moving in direction (%d, %d)\n",
+           e->row, e->col, e->score, e->rowDir, e->colDir);
+    e = e->next;
+  }
 }
 
 location *alloc_location(int r, int c, int rDir, int cDir)
@@ -164,7 +241,7 @@ location *alloc_location(int r, int c, int rDir, int cDir)
   retValue->row = r;
   retValue->col = c;
   retValue->rowDir = rDir;
-  retValue->cDir = cDir;
+  retValue->colDir = cDir;
   retValue->next = NULL;
 
   return retValue;
