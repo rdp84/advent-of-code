@@ -15,7 +15,7 @@ void part_1(void)
   bool foundStart;
   queue *q;
   location *visited;
-  elem e;
+  path p;
 
   rows = cols = 0;
   map = alloc_map(&rows, &cols);
@@ -40,47 +40,47 @@ void part_1(void)
   visited = alloc_location(i, j, 0, 1);
 
   while (!empty(q)) {
-    e = dequeue(q);
+    p = dequeue(q);
 
-    if (*(*(map + e.row) + e.col) != END) {
-      move(e, map, q, visited);
-      rotate(1, -1, e, map, q, visited); // clockwise
-      rotate(-1, 1, e, map, q, visited); // counter-clockwise
+    if (*(*(map + p.row) + p.col) != END) {
+      move(p, map, q, visited);
+      rotate(1, -1, p, map, q, visited); // clockwise
+      rotate(-1, 1, p, map, q, visited); // counter-clockwise
     } else
       break;
   }
 
   /* print_queue(q); */
-  printf("Found the end with a score of %d\n", e.score);
+  printf("Found the end with a score of %d\n", p.score);
   free_map(map, rows);
   free_queue(q);
   free_location(visited);
 }
 
-void move(elem e, char **map, queue *q, location *l)
+void move(path p, char **map, queue *q, location *l)
 {
   int newRow, newCol;
 
-  newRow = e.row + e.rowDir;
-  newCol = e.col + e.colDir;
+  newRow = p.row + p.rowDir;
+  newCol = p.col + p.colDir;
 
   if (*(*(map + newRow) + newCol) != WALL &&
-      !is_looping(l, newRow, newCol, e.rowDir, e.colDir)) {
-    enqueue(e.score + 1,  newRow, newCol, e.rowDir, e.colDir, q);
-    add_location(l, newRow, newCol, e.rowDir, e.colDir);
+      !is_looping(l, newRow, newCol, p.rowDir, p.colDir)) {
+    enqueue(p.score + 1,  newRow, newCol, p.rowDir, p.colDir, q);
+    add_location(l, newRow, newCol, p.rowDir, p.colDir);
   }
 }
 
-void rotate(int rowSign, int colSign, elem e, char **map, queue *q, location *l)
+void rotate(int rowSign, int colSign, path p, char **map, queue *q, location *l)
 {
   int newRowDir, newColDir;
 
-  newRowDir = rowSign * e.colDir;
-  newColDir = colSign * e.rowDir;
+  newRowDir = rowSign * p.colDir;
+  newColDir = colSign * p.rowDir;
 
-  if (!is_looping(l, e.row, e.col, newRowDir, newColDir)) {
-    enqueue(e.score + 1000, e.row, e.col, newRowDir, newColDir, q);
-    add_location(l, e.row, e.col, newRowDir, newColDir);
+  if (!is_looping(l, p.row, p.col, newRowDir, newColDir)) {
+    enqueue(p.score + 1000, p.row, p.col, newRowDir, newColDir, q);
+    add_location(l, p.row, p.col, newRowDir, newColDir);
   }
 }
 
@@ -147,29 +147,31 @@ queue *alloc_queue(void)
 void enqueue(int s, int r, int c, int rDir, int cDir, queue *q)
 {
   elem *e, *i, *j;
+  path p;
 
   e = malloc(sizeof(elem));
-  e->score = s;
-  e->row = r;
-  e->col = c;
-  e->rowDir = rDir;
-  e->colDir = cDir;
+  p.score = s;
+  p.row = r;
+  p.col = c;
+  p.rowDir = rDir;
+  p.colDir = cDir;
+  e->p = p;
   e->next = NULL;
 
   if (!empty(q)) {
-    if (e->score < q->front->score) {
+    if (e->p.score < q->front->p.score) {
       e->next = q->front;
       q->front = e;
     } else if (q->front == q->rear) {
       q->front->next = e;
       q->rear = e;
-    } else if (e->score >= q->rear->score) {
+    } else if (e->p.score >= q->rear->p.score) {
       q->rear->next = e;
       q->rear = e;
     } else {
       i = q->front;
       j = q->front->next;
-      while (e->score > j->score) {
+      while (e->p.score > j->p.score) {
         i = j;
         j = j->next;
       }
@@ -182,20 +184,20 @@ void enqueue(int s, int r, int c, int rDir, int cDir, queue *q)
   q->cnt++;
 }
 
-elem dequeue(queue *q)
+path dequeue(queue *q)
 {
-  elem retValue, *toFree;
+  elem *toFree;
+  path retValue;
 
   toFree = q->front;
   q->front = q->front->next;
   q->cnt--;
 
-  retValue.score = toFree->score;
-  retValue.row = toFree->row;
-  retValue.col = toFree->col;
-  retValue.rowDir  = toFree->rowDir;
-  retValue.colDir = toFree->colDir;
-  retValue.next = NULL;
+  retValue.score = toFree->p.score;
+  retValue.row = toFree->p.row;
+  retValue.col = toFree->p.col;
+  retValue.rowDir  = toFree->p.rowDir;
+  retValue.colDir = toFree->p.colDir;
 
   free(toFree);
   return retValue;
@@ -228,7 +230,7 @@ void print_queue(const queue *q)
   e = q->front;
   while (e != NULL) {
     printf("elem at (%d, %d), with score %d, moving in direction (%d, %d)\n",
-           e->row, e->col, e->score, e->rowDir, e->colDir);
+           e->p.row, e->p.col, e->p.score, e->p.rowDir, e->p.colDir);
     e = e->next;
   }
 }

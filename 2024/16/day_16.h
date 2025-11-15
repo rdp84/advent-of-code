@@ -25,12 +25,17 @@ struct location {
 };
 typedef struct location location;
 
-struct elem {
+struct path {
   int score;
   int row;
   int col;
   int rowDir;
   int colDir;
+};
+typedef struct path path;
+
+struct elem {
+  path p;
   struct elem *next;
 };
 typedef struct elem elem;
@@ -55,10 +60,10 @@ queue *alloc_queue(void);
 void  free_queue(queue *);
 void  print_queue(const queue *);
 void  enqueue(int, int, int, int, int, queue *);
-elem  dequeue(queue *);
+path  dequeue(queue *);
 bool  empty(const queue *);
 
-void  move(elem, char **, queue *, location *);
-void  rotate(int, int, elem, char **, queue *, location *);
+void  move(path, char **, queue *, location *);
+void  rotate(int, int, path, char **, queue *, location *);
 
 #endif
