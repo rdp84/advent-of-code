@@ -26,6 +26,7 @@ struct path {
   int col;
   int rowDir;
   int colDir;
+  location *visited;
 };
 typedef struct path path;
 
@@ -46,10 +47,11 @@ char **alloc_map(int *, int *);
 void free_map(char **, int);
 void print_map(char **, int, int);
 
-location *alloc_location(int, int, int, int);
-void add_location(location *, int, int, int, int);
-bool is_looping(location *, int, int, int, int);
-void free_location(location *);
+location *alloc_location(path);
+void     add_location(location *, path);
+location *copy_path_visits(path);
+bool     is_looping(location *, int, int, int, int);
+void     free_location(location *);
 
 queue *alloc_queue(void);
 void  free_queue(queue *);
@@ -58,7 +60,10 @@ void  enqueue(path, queue *);
 path  dequeue(queue *);
 bool  empty(const queue *);
 
-void  move(path, char **, queue *, location *);
+bool  move(path, char **, queue *, location *);
 void  rotate(int, int, path, char **, queue *, location *);
+
+void add_path_to_map(path, int, int, char **);
+void remove_visits(path, location *);
 
 #endif
