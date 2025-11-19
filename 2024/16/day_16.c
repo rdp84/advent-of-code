@@ -43,13 +43,17 @@ void part_1(void)
   p.rowDir = 0;
   p.colDir = 1;
   p.visited = NULL;
-  allVisits = alloc_location(p);
+  allVisits = NULL;
+
 
   enqueue(p, q);
   while (!empty(q)) {
     p = dequeue(q);
+    if (*(*(map + p.row) + p.col) == END)
+      break;
+    else if (visited_score(p, allVisits) > p.score) {
+      allVisits = add_location(allVisits, p);
 
-    if (*(*(map + p.row) + p.col) != END) {
       rotate(1, -1, p, map, q, allVisits); // clockwise
       rotate(-1, 1, p, map, q, allVisits); // counter-clockwise
       hasMoved = move(p, map, q, allVisits);
@@ -57,10 +61,11 @@ void part_1(void)
       if (!hasMoved)
         free_location(p.visited);
     }
-    else
-      break;
+    else {
+      continue;
+    }
   }
-
+  /* print_location(allVisits); */
   /* print_queue(q); */
   printf("Found the end with a score of %d\n", p.score);
 
@@ -106,7 +111,7 @@ void part_2(void)
   p.rowDir = 0;
   p.colDir = 1;
   p.visited = NULL;
-  allVisits = alloc_location(p);
+  allVisits = NULL;
 
   best = 0;
   bestScore = INT32_MAX;
@@ -116,35 +121,36 @@ void part_2(void)
   while (!empty(q)) {
     p = dequeue(q);
     /* printf("dequeued path with score %d, at (%d, %d), in direction (%d, %d)\n", p.score, p.row, p.col, p.rowDir, p.colDir); */
-
+    
     if (p.score > bestScore) {
-      /* printf("path at (%d, %d) has score %d moving in direction (%d, %d)\n", p.row, p.col, p.score, p.rowDir, p.colDir); */
-      /* remove_visits(p, allVisits); */
-      continue;
+      printf("going to break with score %d, state of the queue:\n", p.score);
+      /* print_queue(q); */
+      break;
     }
-    else if (*(*(map + p.row) + p.col) != END) {
-      rotate(1, -1, p, map, q, allVisits); // clockwise
-      rotate(-1, 1, p, map, q, allVisits); // counter-clockwise
-      hasMoved = move(p, map, q, allVisits);
-
-      if (!hasMoved)
-        free_location(p.visited);
-    } else if (p.score <= bestScore) {
+    else if (*(*(map + p.row) + p.col) == END) {
       printf("Found a best path with a score of %d\n", p.score);
       bestScore = p.score;
       bestPaths = realloc(bestPaths, (best + 1) * sizeof(path));
       *(bestPaths + best) = p;
       best++;
-      /* add_path_to_map(p, rows, cols, map); */
-      remove_visits(p, allVisits);
-    } else {
-      printf("Found a path but it is worse than current best with a score of %d\n", p.score);
-      /* add_path_to_map(p, rows, cols, map); */
-      /* remove_visits(p, allVisits); */
-      break;
+    }
+    else if (visited_score(p, allVisits) >= p.score) {
+      allVisits = add_location(allVisits, p);
+
+      rotate(1, -1, p, map, q, allVisits); // clockwise
+      rotate(-1, 1, p, map, q, allVisits); // counter-clockwise
+      hasMoved = move(p, map, q, allVisits);
+      
+      if (!hasMoved)
+        free_location(p.visited);
+    }
+    else {
+      /* printf("Moving onto next item in our queue\n"); */
+      continue;
     }
   }
 
+  /* print_location(allVisits); */
   printf("Found the end with a best score of %d\n", bestScore);
   printf("There were %d paths that had this score\n", best);
 
@@ -231,7 +237,6 @@ bool move(path p, char **map, queue *q, location *allVisits)
       head->next = alloc_location(p);
     }
     
-    add_location(allVisits, p);
     enqueue(p, q);
 
     return true;
@@ -247,24 +252,21 @@ void rotate(int rowSign, int colSign, path p, char **map, queue *q, location *al
   newRowDir = rowSign * p.colDir;
   newColDir = colSign * p.rowDir;
 
-  if (!is_looping(allVisits, p.row, p.col, newRowDir, newColDir)) {
-    p.score += 1000;
-    p.rowDir = newRowDir;
-    p.colDir = newColDir;
+  p.score += 1000;
+  p.rowDir = newRowDir;
+  p.colDir = newColDir;
 
-    if (p.visited == NULL) {
-      p.visited = alloc_location(p);
-    } else {
-      p.visited = copy_path_visits(p);
-      head = p.visited;
-      while (head->next != NULL)
-        head = head->next;
-      head->next = alloc_location(p);
-    }
-    
-    add_location(allVisits, p);
-    enqueue(p, q);
+  if (p.visited == NULL) {
+    p.visited = alloc_location(p);
+  } else {
+    p.visited = copy_path_visits(p);
+    head = p.visited;
+    while (head->next != NULL)
+      head = head->next;
+    head->next = alloc_location(p);
   }
+    
+  enqueue(p, q);
 }
 
 char **alloc_map(int *rows, int *cols)
@@ -415,6 +417,15 @@ void print_queue(const queue *q)
   }
 }
 
+void print_location(location *l)
+{
+  while (l != NULL) {
+    printf("location at (%d, %d) in direction (%d, %d) with a score of %d\n", l->row, l->col, l->rowDir, l->colDir, l->score);
+    l = l->next;
+  }
+
+}
+
 location *alloc_location(path p)
 {
   location *retValue;
@@ -429,20 +440,38 @@ location *alloc_location(path p)
   return retValue;
 }
 
-void add_location(location *head, path p)
+location *add_location(location *head, path p)
 {
-  location *l;
-  
+  location *l, *tail, *i;
+
   l = malloc(sizeof(location));
+  l->score = p.score;
   l->row = p.row;
   l->col = p.col;
   l->rowDir = p.rowDir;
   l->colDir = p.colDir;
   l->next = NULL;
+  
+  if (head != NULL) {
+    tail = i = head;
 
-  while (head->next != NULL)
-      head = head->next;
-  head->next = l;
+    while (i != NULL) {
+      if (i->row == p.row && i->col == p.col && i->rowDir == p.rowDir && i->colDir == p.colDir) {
+        /* printf("Found an existing location at (%d, %d) in direction (%d, %d) and a score %d. Path has score %d\n", i->row, i->col, i->rowDir, i->colDir, i->score, p.score); */
+        i->score = p.score;
+        free(l);
+        return head;
+      }
+      i = i->next;
+    }
+    
+    while (tail->next != NULL)
+      tail = tail->next;
+    tail->next = l;
+  } else
+    head = l;
+
+  return head;
 }
 
 location *copy_path_visits(path p)
@@ -485,6 +514,21 @@ bool is_looping(location *head, int r, int c, int rDir, int cDir)
   }
 
   return retValue;
+}
+
+int visited_score(path p, location *head)
+{
+  while (head != NULL) {
+    if (head->row == p.row && head->col == p.col && head->rowDir == p.rowDir && head->colDir == p.colDir) {
+      /* if (p.score < head->score) */
+      /*   head->score = p.score; */
+      
+      return head->score;
+    }
+    head = head->next;
+  }
+
+  return INT32_MAX;
 }
 
 void remove_visits(path p, location *allVisits)

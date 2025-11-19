@@ -12,6 +12,7 @@
 #define FREE  '.'
 
 struct location {
+  int score;
   int row;
   int col;
   int rowDir;
@@ -48,7 +49,8 @@ void free_map(char **, int);
 void print_map(char **, int, int);
 
 location *alloc_location(path);
-void     add_location(location *, path);
+location *add_location(location *, path);
+void print_location(location *);
 location *copy_path_visits(path);
 bool     is_looping(location *, int, int, int, int);
 void     free_location(location *);
@@ -65,5 +67,7 @@ void  rotate(int, int, path, char **, queue *, location *);
 
 void add_path_to_map(path, int, int, char **);
 void remove_visits(path, location *);
+
+int visited_score(path, location *);
 
 #endif
