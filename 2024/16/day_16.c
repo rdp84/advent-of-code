@@ -5,8 +5,8 @@ void part_2(void);
 
 int main(void)
 {
-  /* part_1(); */
-  part_2();
+  part_1();
+  /* part_2(); */
   return EXIT_SUCCESS;
 }
 
@@ -14,9 +14,9 @@ void part_1(void)
 {
   char **map;
   int i, j, rows, cols;
-  bool foundStart, hasMoved;
+  bool foundStart;
   queue *q;
-  location *allVisits;
+  location ***seen;
   path p;
 
   rows = cols = 0;
@@ -27,247 +27,184 @@ void part_1(void)
   for (i = 0; i < rows && !foundStart; i++) {
     for (j = 0; j < cols; j++) {
       if (*(*(map + i) + j) == START) {
-        printf("Found start at (%d, %d)\n", i, j);
         foundStart = true;
         break;
       }
     }
   }
-
   printf("Start at (%d, %d)\n", --i, j);
 
+  seen = alloc_seen(rows, cols);
+
   q = alloc_queue();
-  p.score = 0;
+  p.score = p.steps = 0;
   p.row = i;
   p.col = j;
-  p.rowDir = 0;
-  p.colDir = 1;
-  p.visited = NULL;
-  allVisits = NULL;
-
+  p.dir = EAST;
+  p.taken = NULL;
 
   enqueue(p, q);
   while (!empty(q)) {
     p = dequeue(q);
-    if (*(*(map + p.row) + p.col) == END)
+    if (*(*(map + p.row) + p.col) == END) {
+      free(p.taken);
       break;
-    else if (visited_score(p, allVisits) > p.score) {
-      allVisits = add_location(allVisits, p);
-
-      rotate(1, -1, p, map, q, allVisits); // clockwise
-      rotate(-1, 1, p, map, q, allVisits); // counter-clockwise
-      hasMoved = move(p, map, q, allVisits);
-      
-      if (!hasMoved)
-        free_location(p.visited);
     }
-    else {
-      continue;
+    else if (p.score < seen_score(p, seen)) {
+      rotate_clockwise(p, q);
+      rotate_counter_clockwise(p, q);
+      move(p, map, q);
     }
+    else
+      free(p.taken);
   }
-  /* print_location(allVisits); */
+
   /* print_queue(q); */
   printf("Found the end with a score of %d\n", p.score);
 
-  add_path_to_map(p, rows, cols, map);
-  /* print_map(map, rows, cols); */
-
   free_map(map, rows);
+  free_seen(rows, cols, seen);
   free_queue(q);
-  free_location(p.visited);
-  free_location(allVisits);
 }
 
-void part_2(void)
-{
-  char **map;
-  int i, j, rows, cols, best, bestScore, seats;
-  bool foundStart, hasMoved;
-  queue *q;
-  location *allVisits, *l;
-  path p, *bestPaths;
+/* void part_2(void) */
+/* { */
+/*   char **map; */
+/*   int i, j, rows, cols, best, bestScore, seats; */
+/*   bool foundStart, hasMoved; */
+/*   queue *q; */
+/*   location *allVisits, *l; */
+/*   path p, *bestPaths; */
 
-  rows = cols = 0;
-  map = alloc_map(&rows, &cols);
-  print_map(map, rows, cols);
+/*   rows = cols = 0; */
+/*   map = alloc_map(&rows, &cols); */
+/*   print_map(map, rows, cols); */
 
-  foundStart = false;
-  for (i = 0; i < rows && !foundStart; i++) {
-    for (j = 0; j < cols; j++) {
-      if (*(*(map + i) + j) == START) {
-        printf("Found start at (%d, %d)\n", i, j);
-        foundStart = true;
-        break;
-      }
-    }
-  }
+/*   foundStart = false; */
+/*   for (i = 0; i < rows && !foundStart; i++) { */
+/*     for (j = 0; j < cols; j++) { */
+/*       if (*(*(map + i) + j) == START) { */
+/*         printf("Found start at (%d, %d)\n", i, j); */
+/*         foundStart = true; */
+/*         break; */
+/*       } */
+/*     } */
+/*   } */
 
-  printf("Start at (%d, %d)\n", --i, j);
+/*   printf("Start at (%d, %d)\n", --i, j); */
 
-  q = alloc_queue();
-  p.score = 0;
-  p.row = i;
-  p.col = j;
-  p.rowDir = 0;
-  p.colDir = 1;
-  p.visited = NULL;
-  allVisits = NULL;
+/*   q = alloc_queue(); */
+/*   p.score = 0; */
+/*   p.row = i; */
+/*   p.col = j; */
+/*   p.rowDir = 0; */
+/*   p.colDir = 1; */
+/*   p.visited = NULL; */
+/*   allVisits = NULL; */
 
-  best = 0;
-  bestScore = INT32_MAX;
-  bestPaths = NULL;
+/*   best = 0; */
+/*   bestScore = INT32_MAX; */
+/*   bestPaths = NULL; */
   
-  enqueue(p, q);
-  while (!empty(q)) {
-    p = dequeue(q);
-    /* printf("dequeued path with score %d, at (%d, %d), in direction (%d, %d)\n", p.score, p.row, p.col, p.rowDir, p.colDir); */
+/*   enqueue(p, q); */
+/*   while (!empty(q)) { */
+/*     p = dequeue(q); */
+/*     /\* printf("dequeued path with score %d, at (%d, %d), in direction (%d, %d)\n", p.score, p.row, p.col, p.rowDir, p.colDir); *\/ */
     
-    if (p.score > bestScore) {
-      printf("going to break with score %d, state of the queue:\n", p.score);
-      /* print_queue(q); */
-      break;
-    }
-    else if (*(*(map + p.row) + p.col) == END) {
-      printf("Found a best path with a score of %d\n", p.score);
-      bestScore = p.score;
-      bestPaths = realloc(bestPaths, (best + 1) * sizeof(path));
-      *(bestPaths + best) = p;
-      best++;
-    }
-    else if (visited_score(p, allVisits) >= p.score) {
-      allVisits = add_location(allVisits, p);
+/*     if (p.score > bestScore) { */
+/*       printf("going to break with score %d, state of the queue:\n", p.score); */
+/*       /\* print_queue(q); *\/ */
+/*       break; */
+/*     } */
+/*     else if (*(*(map + p.row) + p.col) == END) { */
+/*       printf("Found a best path with a score of %d\n", p.score); */
+/*       bestScore = p.score; */
+/*       bestPaths = realloc(bestPaths, (best + 1) * sizeof(path)); */
+/*       *(bestPaths + best) = p; */
+/*       best++; */
+/*     } */
+/*     else if (visited_score(p, allVisits) >= p.score) { */
+/*       allVisits = add_location(allVisits, p); */
 
-      rotate(1, -1, p, map, q, allVisits); // clockwise
-      rotate(-1, 1, p, map, q, allVisits); // counter-clockwise
-      hasMoved = move(p, map, q, allVisits);
+/*       rotate(1, -1, p, map, q, allVisits); // clockwise */
+/*       rotate(-1, 1, p, map, q, allVisits); // counter-clockwise */
+/*       hasMoved = move(p, map, q, allVisits); */
       
-      if (!hasMoved)
-        free_location(p.visited);
-    }
-    else {
-      /* printf("Moving onto next item in our queue\n"); */
-      continue;
-    }
-  }
+/*       if (!hasMoved) */
+/*         free_location(p.visited); */
+/*     } */
+/*     else { */
+/*       /\* printf("Moving onto next item in our queue\n"); *\/ */
+/*       continue; */
+/*     } */
+/*   } */
 
-  /* print_location(allVisits); */
-  printf("Found the end with a best score of %d\n", bestScore);
-  printf("There were %d paths that had this score\n", best);
+/*   /\* print_location(allVisits); *\/ */
+/*   printf("Found the end with a best score of %d\n", bestScore); */
+/*   printf("There were %d paths that had this score\n", best); */
 
-  i = best - 1;
-  while (i >= 0) {
-    p = *(bestPaths + i);
-    l = p.visited;
-    while (l != NULL) {
-      *(*(map + l->row) + l->col) = 'O';
-      l = l->next;
-    }
-    free_location(p.visited);
-    i--;
-  }
-  free(bestPaths);
+/*   i = best - 1; */
+/*   while (i >= 0) { */
+/*     p = *(bestPaths + i); */
+/*     l = p.visited; */
+/*     while (l != NULL) { */
+/*       *(*(map + l->row) + l->col) = 'O'; */
+/*       l = l->next; */
+/*     } */
+/*     free_location(p.visited); */
+/*     i--; */
+/*   } */
+/*   free(bestPaths); */
 
-  seats = 0;
-  for (i = 0; i < rows; i++)
-    for (j = 0; j < cols; j++)
-      if (*(*(map + i) + j) == 'O')
-        seats++;
+/*   seats = 0; */
+/*   for (i = 0; i < rows; i++) */
+/*     for (j = 0; j < cols; j++) */
+/*       if (*(*(map + i) + j) == 'O') */
+/*         seats++; */
 
-  printf("Number of seats %d\n", seats);
-  print_map(map, rows, cols);
-  free_map(map, rows);
-  free_queue(q);
-  free_location(allVisits);
-}
+/*   printf("Number of seats %d\n", seats); */
+/*   print_map(map, rows, cols); */
+/*   free_map(map, rows); */
+/*   free_queue(q); */
+/*   free_location(allVisits); */
+/* } */
 
-void add_path_to_map(path p, int rows, int cols, char **map)
-{
-  location *l;
+/* void add_path_to_map(path p, int rows, int cols, char **map) */
+/* { */
+/*   location *l; */
 
-  l = p.visited;
-  while (l != NULL) {
-    if (l->rowDir == 0)
-      if (l->colDir == 1)
-        *(*(map + l->row) + l->col) = '>';
-      else
-        *(*(map + l->row) + l->col) = '<';
-    else if (l->rowDir == -1)
-      *(*(map + l->row) + l->col) = '^';
-    else
-      *(*(map + l->row) + l->col) = 'v';
-    l = l->next;
-  }
-  print_map(map, rows, cols);
+/*   l = p.visited; */
+/*   while (l != NULL) { */
+/*     if (l->rowDir == 0) */
+/*       if (l->colDir == 1) */
+/*         *(*(map + l->row) + l->col) = '>'; */
+/*       else */
+/*         *(*(map + l->row) + l->col) = '<'; */
+/*     else if (l->rowDir == -1) */
+/*       *(*(map + l->row) + l->col) = '^'; */
+/*     else */
+/*       *(*(map + l->row) + l->col) = 'v'; */
+/*     l = l->next; */
+/*   } */
+/*   print_map(map, rows, cols); */
 
-  l = p.visited;
-  while (l != NULL) {
-    if (l->rowDir == 0)
-      if (l->colDir == 1)
-        *(*(map + l->row) + l->col) = '.';
-      else
-        *(*(map + l->row) + l->col) = '.';
-    else if (l->rowDir == -1)
-      *(*(map + l->row) + l->col) = '.';
-    else
-      *(*(map + l->row) + l->col) = '.';
-    l = l->next;
-  }
-  *(*(map + 1) + 15) = END;
-}
+/*   l = p.visited; */
+/*   while (l != NULL) { */
+/*     if (l->rowDir == 0) */
+/*       if (l->colDir == 1) */
+/*         *(*(map + l->row) + l->col) = '.'; */
+/*       else */
+/*         *(*(map + l->row) + l->col) = '.'; */
+/*     else if (l->rowDir == -1) */
+/*       *(*(map + l->row) + l->col) = '.'; */
+/*     else */
+/*       *(*(map + l->row) + l->col) = '.'; */
+/*     l = l->next; */
+/*   } */
+/*   *(*(map + 1) + 15) = END; */
+/* } */
 
-bool move(path p, char **map, queue *q, location *allVisits)
-{
-  location *head;
-  int newRow, newCol;
-  
-  newRow = p.row + p.rowDir;
-  newCol = p.col + p.colDir;
-  
-  if (*(*(map + newRow) + newCol) != WALL) {
-    p.score++;
-    p.row = newRow;
-    p.col = newCol;
-
-    if (p.visited == NULL) {
-      p.visited = alloc_location(p);
-    } else {
-      head = p.visited;
-      while (head->next != NULL)
-        head = head->next;
-      head->next = alloc_location(p);
-    }
-    
-    enqueue(p, q);
-
-    return true;
-  } else
-    return false;
-}
-
-void rotate(int rowSign, int colSign, path p, char **map, queue *q, location *allVisits)
-{
-  location *head;
-  int newRowDir, newColDir;
-
-  newRowDir = rowSign * p.colDir;
-  newColDir = colSign * p.rowDir;
-
-  p.score += 1000;
-  p.rowDir = newRowDir;
-  p.colDir = newColDir;
-
-  if (p.visited == NULL) {
-    p.visited = alloc_location(p);
-  } else {
-    p.visited = copy_path_visits(p);
-    head = p.visited;
-    while (head->next != NULL)
-      head = head->next;
-    head->next = alloc_location(p);
-  }
-    
-  enqueue(p, q);
-}
+/* Map functions */
 
 char **alloc_map(int *rows, int *cols)
 {
@@ -318,6 +255,101 @@ void print_map(char **input, int rows, int cols)
   }
 }
 
+/* Seen functions */
+
+location ***alloc_seen(int rows, int cols)
+{
+  int i, j;
+  location ***retValue;
+
+  retValue = calloc(rows, sizeof(location *));
+  for (i = 0; i < rows; i++) {
+    *(retValue + i) = calloc(cols, sizeof(location *));
+    for (j = 0; j < cols; j++)
+      *(*(retValue + i) + j) = NULL;
+  }
+
+  return retValue;
+}
+
+int seen_score(path p, location ***seen)
+{
+  location *current, *next, *toAdd;
+  int retScore;
+
+  current = *(*(seen + p.row) + p.col);
+
+  if (current == NULL) {
+    current = malloc(sizeof(location));
+    current->score = p.score;
+    current->row = p.row;
+    current->col = p.col;
+    current->dir = p.dir;
+    current->next = NULL;
+    *(*(seen + p.row) + p.col) = current;
+
+    return INT32_MAX;
+  }
+  else {
+    next = current;
+    while (next != NULL) {
+      if (next->dir == p.dir) {
+        retScore = next->score;
+        if (p.score < next->score)
+          next->score = p.score;
+
+        return retScore;
+      }
+      current = next;
+      next = next->next;
+    }
+    toAdd = malloc(sizeof(location));
+    toAdd->score = p.score;
+    toAdd->row = p.row;
+    toAdd->col = p.col;
+    toAdd->dir = p.dir;
+    toAdd->score = p.score;
+    toAdd->next = NULL;
+    current->next = toAdd;
+
+    return INT32_MAX;
+  }
+}
+
+void free_seen(int rows, int cols, location ***seen)
+{
+  int i, j;
+
+  for (i = 0; i < rows; i++) {
+    for (j = 0; j < cols; j++)
+      free_location(*(*(seen + i) + j));
+    free(*(seen + i));
+  }
+  free(seen);
+}
+
+void free_location(location *head)
+{
+  location *toFree;
+
+  while (head != NULL) {
+    toFree = head;
+    head = head->next;
+    free(toFree);
+  }
+}
+
+void print_location(location *l)
+{
+  while (l != NULL) {
+    printf("location at (%d, %d), going in direction %c, with a score of %d\n",
+           l->row, l->col, l->dir, l->score);
+    l = l->next;
+  }
+}
+
+/* Queue functions */
+
 queue *alloc_queue(void)
 {
   queue *retValue;
@@ -335,7 +367,6 @@ void enqueue(path p, queue *q)
 
   e = malloc(sizeof(elem));
   e->p = p;
-  e->p.visited = p.visited;
   e->next = NULL;
 
   if (!empty(q)) {
@@ -374,17 +405,17 @@ path dequeue(queue *q)
   q->cnt--;
 
   retValue.score = toFree->p.score;
+  retValue.steps = toFree->p.steps;
   retValue.row = toFree->p.row;
   retValue.col = toFree->p.col;
-  retValue.rowDir  = toFree->p.rowDir;
-  retValue.colDir = toFree->p.colDir;
-  retValue.visited = toFree->p.visited == NULL ? NULL : realloc(toFree->p.visited, sizeof(location));
+  retValue.dir = toFree->p.dir;
+  retValue.taken = toFree->p.taken;
 
   free(toFree);
   return retValue;
 }
 
-bool empty(const queue *q)
+bool empty(queue *q)
 {
   return q->cnt == 0;
 }
@@ -396,181 +427,120 @@ void free_queue(queue *q)
   while (q->front != NULL) {
     toFree = q->front;
     q->front = q->front->next;
-    free_location(toFree->p.visited);
+    free(toFree->p.taken);
     free(toFree);
   }
-
   free(q);
 }
 
-void print_queue(const queue *q)
+void print_queue(queue *q)
 {
   elem *e;
+  char c;
+  int i;
 
   printf("queue has %d elem\n", q->cnt);
 
   e = q->front;
   while (e != NULL) {
-    printf("elem at (%d, %d), with score %d, moving in direction (%d, %d)\n",
-           e->p.row, e->p.col, e->p.score, e->p.rowDir, e->p.colDir);
+    i = 0;
+    if (e->p.taken != NULL) {
+      while ((c = *(e->p.taken + i)) == NORTH || c == EAST || c == SOUTH || c == WEST)
+        i++;
+      *(e->p.taken + i) = '\0';
+      printf("elem at (%d, %d), with score %d, moving in direction %c, has completed "\
+             "the following %d steps: %s\n",
+             e->p.row, e->p.col, e->p.score, e->p.dir, e->p.steps, e->p.taken);
+      *(e->p.taken + i) = c;
+    }
+    else
+      printf("elem at (%d, %d), with score %d, moving in direction %c, has completed "\
+             "the following %d steps: NULL\n",
+             e->p.row, e->p.col, e->p.score, e->p.dir, e->p.steps);      
+
+
     e = e->next;
   }
 }
 
-void print_location(location *l)
-{
-  while (l != NULL) {
-    printf("location at (%d, %d) in direction (%d, %d) with a score of %d\n", l->row, l->col, l->rowDir, l->colDir, l->score);
-    l = l->next;
-  }
+/* Movement functions */ 
 
+void rotate(path p, queue *q)
+{
+  char *currentTaken;
+
+  currentTaken = p.taken;
+  p.score += 1000;
+  p.taken = alloc_taken(p);
+
+  if (currentTaken != NULL)
+    (void) strcpy(p.taken, currentTaken);
+
+  *(p.taken + p.steps) = p.dir;
+  taken_end(p) = '\0';
+  p.steps++;
+
+  enqueue(p, q);
 }
 
-location *alloc_location(path p)
+void rotate_clockwise(path p, queue *q)
 {
-  location *retValue;
+  if (p.dir == NORTH)
+    p.dir = EAST;
+  else if (p.dir == EAST)
+    p.dir = SOUTH;
+  else if (p.dir == SOUTH)
+    p.dir = WEST;
+  else
+    p.dir = NORTH;
 
-  retValue = malloc(sizeof(location));
-  retValue->row = p.row;
-  retValue->col = p.col;
-  retValue->rowDir = p.rowDir;
-  retValue->colDir = p.colDir;
-  retValue->next = NULL;
-
-  return retValue;
+  rotate(p, q);
 }
 
-location *add_location(location *head, path p)
+void rotate_counter_clockwise(path p, queue *q)
 {
-  location *l, *tail, *i;
+  if (p.dir == NORTH)
+    p.dir = WEST;
+  else if (p.dir == EAST)
+    p.dir = NORTH;
+  else if (p.dir == SOUTH)
+    p.dir = EAST;
+  else
+    p.dir = SOUTH;
 
-  l = malloc(sizeof(location));
-  l->score = p.score;
-  l->row = p.row;
-  l->col = p.col;
-  l->rowDir = p.rowDir;
-  l->colDir = p.colDir;
-  l->next = NULL;
+  rotate(p, q);
+}
+
+void move(path p, char **map, queue *q)
+{
+  int newRow, newCol;
+
+  newRow = p.row;
+  newCol = p.col;
   
-  if (head != NULL) {
-    tail = i = head;
+  if (p.dir == NORTH)
+    newRow--;
+  else if (p.dir == EAST)
+    newCol++;
+  else if (p.dir == SOUTH)
+    newRow++;
+  else
+    newCol--;
+  
+  if (*(*(map + newRow) + newCol) != WALL) {
+    p.score++;
+    p.row = newRow;
+    p.col = newCol;
 
-    while (i != NULL) {
-      if (i->row == p.row && i->col == p.col && i->rowDir == p.rowDir && i->colDir == p.colDir) {
-        /* printf("Found an existing location at (%d, %d) in direction (%d, %d) and a score %d. Path has score %d\n", i->row, i->col, i->rowDir, i->colDir, i->score, p.score); */
-        i->score = p.score;
-        free(l);
-        return head;
-      }
-      i = i->next;
+    if (p.steps % TAKEN_SIZE == 0) {
+      p.taken = realloc_taken(p);
+      taken_end(p) = '\0';
     }
-    
-    while (tail->next != NULL)
-      tail = tail->next;
-    tail->next = l;
-  } else
-    head = l;
+    *(p.taken + p.steps) = p.dir;
+    p.steps++;
 
-  return head;
-}
-
-location *copy_path_visits(path p)
-{
-  location *head, *tail, *retValue;
-
-  head = p.visited;
-  if (head != NULL) {
-    retValue = malloc(sizeof(location));
-    retValue->row = head->row;
-    retValue->col = head->col;
-    retValue->rowDir = head->rowDir;
-    retValue->colDir = head->colDir;
-    retValue->next = NULL;
-
-    tail = retValue;
-    while ((head = head->next) != NULL) {
-      tail->next = malloc(sizeof(location));
-      tail = tail->next;
-      tail->row = head->row;
-      tail->col = head->col;
-      tail->rowDir = head->rowDir;
-      tail->colDir = head->colDir;
-      tail->next = NULL;
-    }
-  } else
-    retValue = NULL;
-
-  return retValue;
-}
- 
-bool is_looping(location *head, int r, int c, int rDir, int cDir)
-{
-  bool retValue;
-
-  retValue = false;
-  while (head != NULL && !retValue) {
-    retValue = head->row == r && head->col == c && head->rowDir == rDir && head->colDir == cDir;
-    head = head->next;
+    enqueue(p, q);
   }
-
-  return retValue;
-}
-
-int visited_score(path p, location *head)
-{
-  while (head != NULL) {
-    if (head->row == p.row && head->col == p.col && head->rowDir == p.rowDir && head->colDir == p.colDir) {
-      /* if (p.score < head->score) */
-      /*   head->score = p.score; */
-      
-      return head->score;
-    }
-    head = head->next;
-  }
-
-  return INT32_MAX;
-}
-
-void remove_visits(path p, location *allVisits)
-{
-  location *pVisits, *head, *i, *j;
-
-  head = allVisits;
-  pVisits = p.visited;
-
-  while (pVisits != NULL) {
-    i = head;
-
-    if (i->row == pVisits->row && i->col == pVisits->col &&
-        i->rowDir == pVisits->rowDir && i->colDir == pVisits->colDir) {
-      head = i->next;
-      free(i);
-    } else {
-      j = i->next;
-
-      while (j != NULL &&
-             (j->row != pVisits->row || j->col != pVisits->col ||
-              j->rowDir != pVisits->rowDir || j->colDir != pVisits->colDir)) {
-        i = j;
-        j = j->next;
-      }
-
-      if (j != NULL) {
-        i->next = j->next;
-        free(j);
-      }
-    }
-    pVisits = pVisits->next;
-  }
-}
-
-void free_location(location *l)
-{
-  location *toFree;
-
-  while (l != NULL) {
-    toFree = l;
-    l = l->next;
-    free(toFree);
-  }
+  else
+    free(p.taken);
 }

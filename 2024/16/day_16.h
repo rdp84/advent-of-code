@@ -11,23 +11,33 @@
 #define WALL  '#'
 #define FREE  '.'
 
+#define NORTH '^'
+#define EAST  '>'
+#define SOUTH 'v'
+#define WEST  '<'
+
+#define TAKEN_SIZE 4
+
+#define alloc_taken(p)    malloc((((p.steps / TAKEN_SIZE) + 1) * TAKEN_SIZE + 1) * sizeof(char))
+#define realloc_taken(p)  realloc(p.taken, (((p.steps / TAKEN_SIZE) + 1) * TAKEN_SIZE + 1) * sizeof(char))
+#define taken_end(p)      *(p.taken + ((p.steps / TAKEN_SIZE) + 1) * TAKEN_SIZE)
+
 struct location {
   int score;
   int row;
   int col;
-  int rowDir;
-  int colDir;
+  char dir;
   struct location *next;
 };
 typedef struct location location;
 
 struct path {
   int score;
+  int steps;
   int row;
   int col;
-  int rowDir;
-  int colDir;
-  location *visited;
+  char dir;
+  char *taken;
 };
 typedef struct path path;
 
@@ -48,26 +58,24 @@ char **alloc_map(int *, int *);
 void free_map(char **, int);
 void print_map(char **, int, int);
 
-location *alloc_location(path);
-location *add_location(location *, path);
-void print_location(location *);
-location *copy_path_visits(path);
-bool     is_looping(location *, int, int, int, int);
+location ***alloc_seen(int, int);
+int      seen_score(path, location ***);
+void     free_seen(int, int, location ***);
+void     print_location(location *);
 void     free_location(location *);
 
 queue *alloc_queue(void);
-void  free_queue(queue *);
-void  print_queue(const queue *);
 void  enqueue(path, queue *);
 path  dequeue(queue *);
-bool  empty(const queue *);
+bool  empty(queue *);
+void  free_queue(queue *);
+void  print_queue(queue *);
 
-bool  move(path, char **, queue *, location *);
-void  rotate(int, int, path, char **, queue *, location *);
+void move(path, char **, queue *);
+void rotate(path, queue *);
+void rotate_clockwise(path, queue *);
+void rotate_counter_clockwise(path, queue *);
 
 void add_path_to_map(path, int, int, char **);
-void remove_visits(path, location *);
-
-int visited_score(path, location *);
 
 #endif
