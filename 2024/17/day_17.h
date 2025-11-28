@@ -23,18 +23,37 @@ struct output {
 };
 typedef struct output output;
 
+struct elem {
+  int64_t n;
+  struct elem *next;
+};
+typedef struct elem elem;
 
-char *alloc_program(int *);
-void free_output(output *);
-void print_output(output *);
+struct stack {
+  int cnt;
+  elem *top;
+};
+typedef struct stack stack;
 
-void   adv(int *, char);
-void   bxl(int *, char);
-void   bst(int *, char);
-void   jnz(int *, int *, char);
-void   bxc(int *);
-output *out(int *, char, output *);
-void   bdv(int *, char);
-void   cdv(int *, char);
+char   *alloc_program(int64_t *);
+output *run_program(char *, int64_t *);
+void   free_output(output *);
+void   print_output(output *);
+
+void    init_stack(stack *);
+void    push(int64_t, stack *);
+int64_t pop(stack *);
+bool    empty(const stack *);
+void    free_stack(stack *);
+void    print_stack(const stack *);
+
+void   adv(int64_t *, char);
+void   bxl(int64_t *, char);
+void   bst(int64_t *, char);
+void   jnz(int *, int64_t *, char);
+void   bxc(int64_t *);
+output *out(int64_t *, char, output *);
+void   bdv(int64_t *, char);
+void   cdv(int64_t *, char);
 
 #endif
