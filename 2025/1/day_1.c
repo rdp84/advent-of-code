@@ -92,6 +92,7 @@ input alloc_input(void)
     line = NULL;
   }
 
+  free(line);
   fclose(ifp);
   return retValue;
 }
