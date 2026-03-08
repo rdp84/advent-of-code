@@ -76,11 +76,9 @@ btns alloc_btns(char **linep, int nlights)
   while ((c = *line++) != '{')
     if (c == '(')
       retValue.len++;
-  retValue.btns = malloc(retValue.len * sizeof(int *));
-  for (i = 0; i < retValue.len; i++) {
-    *(retValue.btns + i) = malloc(sizeof(int));
-    **(retValue.btns + i) = 0;
-  }
+  retValue.btns = malloc(retValue.len * sizeof(int));
+  for (i = 0; i < retValue.len; i++)
+    *(retValue.btns + i) = 0;
 
   line = *linep;
   i = 0;
@@ -89,7 +87,7 @@ btns alloc_btns(char **linep, int nlights)
 
     while ((c = *line++) != ')')
       if (isdigit(c))
-        **(retValue.btns + i) |= 1 << (nlights - (c - '0' + 1));
+        *(retValue.btns + i) |= 1 << (nlights - (c - '0' + 1));
     i++;
 
     while (isspace(*++line)) ;
@@ -105,15 +103,11 @@ void print_btns(btns b)
 
   printf("Number of buttons: %d\n", b.len);
   for (i = 0; i < b.len; i++)
-    bit_print(**(b.btns + i));
+    bit_print(*(b.btns + i));
 }
 
 void free_btns(btns b)
 {
-  int i;
-
-  for (i = 0; i < b.len; i++)
-    free(*(b.btns + i));
   free(b.btns);
 }
 

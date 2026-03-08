@@ -13,8 +13,8 @@ struct diag {
 typedef struct diag diag;
 
 struct btns {
-  int   len;
-  int **btns;
+  int  len;
+  int *btns;
 };
 typedef struct btns btns;
 
