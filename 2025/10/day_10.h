@@ -4,24 +4,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <limits.h>
 
 struct diag {
   int  len;
-  int *ilights;
+  int  ilights;
 };
 typedef struct diag diag;
 
-struct btn {
-  int  len;
-  int *wiring;
+struct btns {
+  int   len;
+  int **btns;
 };
-typedef struct btn btn;
-
-struct btnlist {
-  btn b;
-  struct btnlist *next;
-};
-typedef struct btnlist btnlist;
+typedef struct btns btns;
 
 struct jolt {
   int len;
@@ -29,16 +24,17 @@ struct jolt {
 };
 typedef struct jolt jolt;
 
-diag alloc_diag(char **);
+diag get_diag(char **);
 void print_diag(diag);
-void free_diag(diag);
 
-btnlist *alloc_btns(char **);
-void     print_btns(btnlist *);
-void     free_btns(btnlist *);
+btns alloc_btns(char **, int);
+void print_btns(btns);
+void free_btns(btns);
 
 jolt alloc_jolt(char **);
 void print_jolt(jolt);
 void free_jolt(jolt);
+
+void bit_print(int);
 
 #endif

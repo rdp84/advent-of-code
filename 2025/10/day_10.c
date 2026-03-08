@@ -15,18 +15,17 @@ void part_1(void)
   ssize_t linelen;
   char *line, *toFree;
   diag d;
-  btnlist *btns;
+  btns btns;
 
   ifp = fopen("example_input.txt", "r");
   linecap = 0;
   line = NULL;
   while ((linelen = getline(&line, &linecap, ifp)) > 0) {
     toFree = line;
-    d = alloc_diag(&line);
+    d = get_diag(&line);
     print_diag(d);
-    free_diag(d);
 
-    btns = alloc_btns(&line);
+    btns = alloc_btns(&line, d.len);
     print_btns(btns);
     free_btns(btns);
 
@@ -38,67 +37,60 @@ void part_1(void)
   fclose(ifp);
 }
 
-diag alloc_diag(char **linep)
+diag get_diag(char **linep)
 {
-  char *line, *start;
+  char c, *line, *start;
+  int len;
   diag retValue;
 
   line = *linep;
   start = ++line;
-  while (*line++ != ']');
+  while (*line++ != ']') ;
   *linep = line;
-  retValue.len = (int) ((line - start) - 1);
-  retValue.ilights = malloc(retValue.len * sizeof(int));
+  retValue.len = len = (int) ((line - start) - 1);
+  
+  retValue.ilights = 0;
+  while ((c = *start++) != ']') {
+    if (c == '#')
+      retValue.ilights |= 1 << (len - 1);
+    len--;
+  }
 
-  while (*start != ']')
-    *(retValue.ilights++) = *start++ == '.' ? 0 : 1;
-
-  retValue.ilights -= retValue.len;
   return retValue;
 }
 
 void print_diag(diag d)
 {
+  printf("diag has %d indicator lights:\n", d.len);
+  bit_print(d.ilights);
+}
+
+btns alloc_btns(char **linep, int nlights)
+{
+  char c, *line;
   int i;
+  btns retValue;
 
-  printf("diag has the indicator lights:\n");
-  for (i = 0; i < d.len; i++)
-    printf("%d", *(d.ilights + i));
-  printf("\n");
-}
-
-void free_diag(diag d)
-{
-  free(d.ilights);
-}
-
-btnlist *alloc_btns(char **linep)
-{
-  char c, *line, *start;
-  int len;
-  btnlist *retValue, *head;
-
-  retValue = NULL;
   line = *linep;
+  retValue.len = 0;
+  while ((c = *line++) != '{')
+    if (c == '(')
+      retValue.len++;
+  retValue.btns = malloc(retValue.len * sizeof(int *));
+  for (i = 0; i < retValue.len; i++) {
+    *(retValue.btns + i) = malloc(sizeof(int));
+    **(retValue.btns + i) = 0;
+  }
+
+  line = *linep;
+  i = 0;
   while (*line != '{') {
     while (*line++ != '(') ;
 
-    start = line;
-    len = 1;
     while ((c = *line++) != ')')
-      if (c == ',')
-        len++;
-
-    head = malloc(sizeof(btnlist));
-    head->b.len = len;
-    head->b.wiring = malloc(len * sizeof(int));
-    while ((c = *start++) != ')')
-      if (c != ',')
-        *(head->b.wiring++) = c - '0';
-
-    head->b.wiring -= len;
-    head->next = retValue;
-    retValue = head;
+      if (isdigit(c))
+        **(retValue.btns + i) |= 1 << (nlights - (c - '0' + 1));
+    i++;
 
     while (isspace(*++line)) ;
   }
@@ -107,29 +99,22 @@ btnlist *alloc_btns(char **linep)
   return retValue;
 }
 
-void print_btns(btnlist *head)
+void print_btns(btns b)
 {
   int i;
 
-  while (head != NULL) {
-    printf("button has wiring schematic:\n");
-    for (i = 0; i < head->b.len; i++)
-      printf("%d ", *(head->b.wiring + i));
-    printf("\n");
-    head = head->next;
-  }
+  printf("Number of buttons: %d\n", b.len);
+  for (i = 0; i < b.len; i++)
+    bit_print(**(b.btns + i));
 }
 
-void free_btns(btnlist *head)
+void free_btns(btns b)
 {
-  btnlist *toFree;
-  
-  while (head != NULL) {
-    toFree = head;
-    head = head->next;
-    free(toFree->b.wiring);
-    free(toFree);
-  }
+  int i;
+
+  for (i = 0; i < b.len; i++)
+    free(*(b.btns + i));
+  free(b.btns);
 }
 
 jolt alloc_jolt(char **linep)
@@ -162,4 +147,21 @@ jolt alloc_jolt(char **linep)
 
   retValue.reqs -= retValue.len;
   return retValue;
+}
+
+void bit_print(int a)
+{
+  int i, n;
+  long b, mask;
+
+  b = (long) a;
+  n = sizeof(int) * CHAR_BIT;
+  mask = (long) 1 << (n - 1);
+  for(i = 1; i <= n; ++i) {
+    putchar((b & mask) ? '1' : '0');
+    b <<= 1;
+    if (i % CHAR_BIT == 0 && i < n)
+      putchar(' ');
+  }
+  putchar('\n');
 }
