@@ -1,4 +1,5 @@
 #include "day_10.h"
+#include "queue.h"
 
 void part_1(void);
 
@@ -14,25 +15,45 @@ void part_1(void)
   size_t linecap;
   ssize_t linelen;
   char *line, *toFree;
+  bool configured;
+  int i, ans;
   diag d;
-  btns btns;
+  btns b;
+  elem e, newelem;
 
-  ifp = fopen("example_input.txt", "r");
+  ifp = fopen("input.txt", "r");
   linecap = 0;
   line = NULL;
+  ans = 0;
   while ((linelen = getline(&line, &linecap, ifp)) > 0) {
     toFree = line;
     d = get_diag(&line);
-    print_diag(d);
+    b = alloc_btns(&line, d.len);
+    alloc_queue(d.len);
+    e.presses = e.val = 0;
+    enqueue(e);
 
-    btns = alloc_btns(&line, d.len);
-    print_btns(btns);
-    free_btns(btns);
-
+    configured = false;
+    while (!configured) {
+      e = dequeue();
+      for (i = 0; i < b.len; i++) {
+        newelem.presses = e.presses + 1;
+        if ((newelem.val = e.val ^ *(b.btns + i)) == d.ilights) {
+          ans += newelem.presses;
+          configured = true;
+          break;
+        }
+        else
+          enqueue(newelem);
+      }
+    }
+    free_queue();
+    free_btns(b);
     free(toFree);
     line = NULL;
   }
 
+  printf("ans: %d\n", ans);
   free(line);
   fclose(ifp);
 }
